@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hostel Complaint Management Portal</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* CSS for the Critical Pulse Effect */
+        .pulse-critical { 
+            animation: pulse-red 2s infinite; 
+            border-left: 4px solid #ef4444; /* Red 500 */
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .main-content { min-height: calc(100vh - 64px - 56px); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans text-gray-900 bg-gray-50">
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm z-10 sticky top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center cursor-pointer" onclick="setView('landing')">
+                    <i data-lucide="building-2" class="h-8 w-8 text-indigo-600"></i>
+                    <span class="ml-2 text-xl font-bold text-gray-900">HostelMate</span>
+                </div>
+                <div class="flex items-center space-x-4" id="nav-controls"></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow main-content">
+        <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8" id="app-root"></div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 text-sm">
+            <p>&copy; AGR. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Global State Variables ---
+        let currentView = 'landing';
+        let isWardenAuthenticated = false;
+        let isStudentAuthenticated = false;
+        
+        let complaints = [
+            { id: 1, name: "John Doe", room: "101", type: "Furniture", desc: "Broken Chair", priority: 3, status: "PENDING", timestamp: 1700900000000 },
+            { id: 2, name: "Alice Smith", room: "205", type: "Electrical (Danger)", desc: "Exposed wiring sparking", priority: 1, status: "PENDING", timestamp: 1700905000000 },
+            { id: 3, name: "Bob Brown", room: "302", type: "Plumbing", desc: "Leaking tap", priority: 2, status: "PENDING", timestamp: 1700902000000 },
+        ];
+        
+        let announcements = [
+            { id: 1, text: "Hostel gates close at 10:00 PM strictly.", date: "2024-11-20" },
+            { id: 2, text: "Water tank cleaning scheduled for Sunday.", date: "2024-11-22" }
+        ];
+
+        // --- Helpers ---
+        const formatDate = (timestamp) => {
+            if (!timestamp) return 'N/A';
+            return new Date(timestamp).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            });
+        };
+
+        const getEstimatedTime = (priority) => {
+            switch(priority) {
+                case 1: return "IMMEDIATE"; // Medical/Critical
+                case 2: return "24 Hours";
+                case 3: return "2-3 Days";
+                case 4: return "3-5 Days";
+                default: return "Unknown";
+            }
+        };
+
+        const sortComplaints = (list) => {
+            return list.slice().sort((a, b) => {
+                if (a.priority !== b.priority) return a.priority - b.priority;
+                return a.timestamp - b.timestamp;
+            });
+        };
+
+        const getPriority = (type) => {
+            if (type.includes('Medical')) return 1; // Highest Priority
+            if (type.includes('Danger') || type.includes('Flooding')) return 1;
+            if (type.includes('Minor')) return 2;
+            if (type.includes('Internet') || type.includes('Furniture')) return 3;
+            return 4;
+        };
+
+        // --- Logic Functions ---
+        const addComplaint = (formData) => {
+            const newComplaint = {
+                id: Date.now(), 
+                timestamp: Date.now(),
+                resolvedTimestamp: null,
+                status: "PENDING",
+                name: formData.name,
+                room: formData.room,
+                type: formData.type,
+                desc: formData.desc,
+                priority: getPriority(formData.type)
+            };
+            complaints.push(newComplaint);
+            alert("Complaint Lodged!");
+            setView('landing');
+        };
+
+        const attachComplaintFormListener = () => {
+            const form = document.getElementById('complaint-form');
+            if (form) {
+                form.onsubmit = (e) => {
+                    e.preventDefault();
+                    const formData = {
+                        name: form.elements.name.value,
+                        room: form.elements.room.value,
+                        type: form.elements.type.value,
+                        desc: form.elements.desc.value,
+                    };
+                    addComplaint(formData);
+                };
+            }
+        };
+
+        const handleWardenLogin = (password) => {
+            if (password === 'admin123') {
+                isWardenAuthenticated = true;
+                render();
+            } else {
+                showError('WardenLogin', 'Incorrect password. Try "admin123"');
+            }
+        };
+
+        const handleStudentLogin = (password) => {
+            if (password === 'student123') {
+                isStudentAuthenticated = true;
+                render();
+            } else {
+                showError('StudentLogin', 'Incorrect password. Try "student123"');
+            }
+        };
+
+        const handleLogout = () => {
+            isStudentAuthenticated = false;
+            isWardenAuthenticated = false;
+            setView('landing');
+        };
+
+        const setView = (viewName) => {
+            currentView = viewName;
+            render();
+        };
+        
+        const handleResolve = (id) => {
+            const index = complaints.findIndex(c => c.id === id);
+            if (index !== -1) {
+                complaints[index].status = "RESOLVED";
+                complaints[index].resolvedTimestamp = Date.now(); 
+            }
+            render();
+        };
+
+        const addAnnouncement = (text) => {
+            if (!text.trim()) return;
+            announcements.unshift({
+                id: Date.now(),
+                text: text,
+                date: new Date().toISOString().split('T')[0]
+            });
+            render();
+        };
+
+        const deleteAnnouncement = (id) => {
+            announcements = announcements.filter(a => a.id !== id);
+            render();
+        };
+
+        const showError = (id, message) => {
+            const container = document.getElementById(id);
+            if (container) container.querySelector('.auth-error-message').textContent = message;
+        };
+
+        // --- Views ---
+        const renderNavControls = () => {
+            const navEl = document.getElementById('nav-controls');
+            let html = `
+                <button onclick="setView('landing')" class="px-3 py-2 rounded-md text-sm font-medium ${currentView === 'landing' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}">Home</button>
+                <button onclick="setView('student')" class="px-3 py-2 rounded-md text-sm font-medium ${currentView === 'student' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}">Student</button>
+                <button onclick="setView('warden')" class="px-3 py-2 rounded-md text-sm font-medium ${currentView === 'warden' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'}">Warden</button>
+            `;
+            if (isStudentAuthenticated || isWardenAuthenticated) {
+                html += `<button onclick="handleLogout()" class="ml-2 px-3 py-2 rounded-md text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 transition-colors">Log Out</button>`;
+            }
+            navEl.innerHTML = html;
+        };
+
+        const renderLandingPage = () => {
+            return `
+                <div class="fade-in space-y-12">
+                    <div class="text-center">
+                        <h1 class="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
+                            <span class="block">Hostel Complaint</span>
+                            <span class="block text-indigo-600">Management Portal</span>
+                        </h1>
+                    </div>
+                    ${announcements.length > 0 ? `
+                        <div class="max-w-3xl mx-auto bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg shadow-sm">
+                            <div class="flex items-center mb-3">
+                                <i data-lucide="megaphone" class="h-5 w-5 text-yellow-600 mr-2"></i>
+                                <h3 class="text-lg font-bold text-yellow-800">Notice Board</h3>
+                            </div>
+                            <div class="space-y-2">
+                                ${announcements.map(a => `
+                                    <div class="flex justify-between items-start text-sm border-b border-yellow-100 last:border-0 pb-2 last:pb-0">
+                                        <span class="text-gray-800 font-medium">${a.text}</span>
+                                        <span class="text-gray-500 text-xs ml-4 whitespace-nowrap">${a.date}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>` : ''}
+                    <div class="grid grid-cols-1 gap-8 md:grid-cols-2">
+                        <div onclick="setView('student')" class="relative group bg-white p-6 cursor-pointer rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                            <span class="rounded-lg inline-flex p-3 bg-indigo-50 text-indigo-700 ring-4 ring-white"><i data-lucide="user" class="h-6 w-6"></i></span>
+                            <div class="mt-8"><h3 class="text-lg font-medium">Student Portal</h3><p class="mt-2 text-sm text-gray-500">Lodge complaints.</p></div>
+                        </div>
+                        <div onclick="setView('warden')" class="relative group bg-white p-6 cursor-pointer rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300">
+                            <span class="rounded-lg inline-flex p-3 bg-red-50 text-red-700 ring-4 ring-white"><i data-lucide="shield-alert" class="h-6 w-6"></i></span>
+                            <div class="mt-8"><h3 class="text-lg font-medium">Warden Dashboard</h3><p class="mt-2 text-sm text-gray-500">Resolve issues.</p></div>
+                        </div>
+                    </div>
+                </div>`;
+        };
+
+        const renderAuthCard = (id, title, passwordDemo, color) => {
+            const c = color === 'indigo' ? {text: 'text-indigo-600', ring: 'focus:ring-indigo-500', bg: 'bg-indigo-600 hover:bg-indigo-700'} 
+                                         : {text: 'text-red-600', ring: 'focus:ring-red-500', bg: 'bg-red-600 hover:bg-red-700'};
+            return `
+                <div id="${id}" class="max-w-md mx-auto bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 fade-in">
+                    <div class="sm:mx-auto sm:w-full sm:max-w-md mb-6 text-center">
+                        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">${title}</h2>
+                    </div>
+                    <form id="auth-form-${id}" class="space-y-6">
+                        <div class="auth-error-message text-sm text-red-600 text-center"></div>
+                        <div>
+                            <input id="password-${id}" type="password" required class="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${c.ring}" placeholder="Enter password" />
+                        </div>
+                        <button type="submit" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${c.bg}">Sign in</button>
+                    </form>
+                    <div class="mt-6 text-center text-gray-500 text-sm">Demo: <span class="font-medium text-gray-900">${passwordDemo}</span></div>
+                </div>
+            `;
+        };
+
+        const renderStudentDashboard = (pending) => {
+            return `
+                <div class="fade-in">
+                    <div id="student-tab-controls" class="flex space-x-4 mb-6">
+                        <button onclick="switchStudentTab('lodge')" id="lodge-tab" class="px-4 py-2 rounded-lg font-medium bg-indigo-600 text-white">Lodge Complaint</button>
+                        <button onclick="switchStudentTab('queue')" id="queue-tab" class="px-4 py-2 rounded-lg font-medium bg-white text-gray-600">Live Queue</button>
+                    </div>
+                    <div id="student-content-area">${renderStudentForm()}</div>
+                </div>`;
+        };
+
+        const renderStudentForm = () => `
+            <div class="bg-white shadow sm:rounded-lg p-6">
+                <form id="complaint-form" class="space-y-4">
+                    <input name="name" placeholder="Full Name" required class="w-full p-2 border rounded" />
+                    <input name="room" placeholder="Room Number" required class="w-full p-2 border rounded" />
+                    <select name="type" class="w-full p-2 border rounded">
+                        <option>General Maintenance</option>
+                        <option>Furniture Repair</option>
+                        <option>Internet/Wi-Fi</option>
+                        <option>Electrical (Minor)</option>
+                        <option>🔥 Electrical - CRITICAL</option>
+                        <option>💧 Plumbing - CRITICAL</option>
+                        <!-- ADDED MEDICAL OPTION HERE -->
+                        <option value="Medical">🚑 Medical Emergency - CRITICAL</option>
+                    </select>
+                    <textarea name="desc" rows="3" placeholder="Description" required class="w-full p-2 border rounded"></textarea>
+                    <button type="submit" class="w-full py-2 px-4 bg-indigo-600 text-white rounded hover:bg-indigo-700">Submit</button>
+                </form>
+            </div>`;
+
+        const renderQueueStatus = (pending) => `
+            <div class="bg-white shadow sm:rounded-lg overflow-hidden">
+                <div class="px-4 py-5 bg-indigo-50 border-b border-indigo-100 font-medium text-indigo-900">Current Queue</div>
+                <ul class="divide-y divide-gray-200">
+                    ${pending.map((c, i) => `
+                        <li class="px-4 py-4 flex justify-between items-center ${c.priority === 1 ? 'bg-red-50 pulse-critical' : ''}">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold">${i + 1}</span>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">${c.type} ${c.priority === 1 ? '<span class="text-red-600 font-bold text-xs">CRITICAL</span>' : ''}</p>
+                                    <p class="text-xs text-gray-500">Registered: ${formatDate(c.timestamp)}</p>
+                                    <p class="text-xs text-indigo-600">Est. Time: ${getEstimatedTime(c.priority)}</p>
+                                </div>
+                            </div>
+                            <span class="text-xs text-gray-400">Room ${c.room}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+            </div>`;
+
+        const renderWardenDashboard = (sorted) => {
+            const pending = sorted.filter(c => c.status === "PENDING");
+            const resolved = complaints.filter(c => c.status === "RESOLVED");
+
+            return `
+                <div class="space-y-6 fade-in">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 grid grid-cols-3 gap-4 text-center">
+                            <div class="p-4 bg-white shadow rounded border-l-4 border-red-500">
+                                <div class="text-2xl font-bold text-red-700">${pending.filter(c => c.priority === 1).length}</div>
+                                <div class="text-xs text-gray-500">Critical</div>
+                            </div>
+                            <div class="p-4 bg-white shadow rounded border-l-4 border-indigo-500">
+                                <div class="text-2xl font-bold text-indigo-700">${pending.length}</div>
+                                <div class="text-xs text-gray-500">Pending</div>
+                            </div>
+                            <div class="p-4 bg-white shadow rounded border-l-4 border-green-500">
+                                <div class="text-2xl font-bold text-green-700">${resolved.length}</div>
+                                <div class="text-xs text-gray-500">Resolved</div>
+                            </div>
+                        </div>
+                        <div class="bg-white shadow rounded p-4">
+                            <form id="announcement-form" class="flex gap-2">
+                                <input id="announcement-input" class="flex-1 border rounded px-2 text-sm" placeholder="Post Notice..." required />
+                                <button class="bg-indigo-600 text-white px-3 text-sm rounded">Post</button>
+                            </form>
+                            <div class="mt-2 space-y-1 max-h-32 overflow-y-auto">
+                                ${announcements.map(a => `<div class="text-xs bg-gray-50 p-2 flex justify-between"><span>${a.text}</span><button onclick="deleteAnnouncement(${a.id})" class="text-red-500">x</button></div>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PENDING QUEUE -->
+                    <div class="bg-white shadow rounded-lg">
+                        <div class="px-4 py-3 border-b flex justify-between items-center">
+                            <h3 class="font-bold text-gray-700">Priority Queue (Pending)</h3>
+                            <div class="text-xs text-gray-500">Live Sort</div>
+                        </div>
+                        <ul class="divide-y divide-gray-200">
+                            ${pending.length === 0 ? '<li class="p-4 text-center text-gray-500">No pending complaints.</li>' : pending.map(c => `
+                                <li class="p-4 hover:bg-gray-50 flex justify-between items-center ${c.priority === 1 ? 'bg-red-50 pulse-critical' : ''}">
+                                    <div>
+                                        <div class="font-medium text-gray-900 flex items-center gap-2">
+                                            ${c.type}
+                                            ${c.priority === 1 ? '<span class="bg-red-100 text-red-800 text-[10px] px-2 rounded">CRITICAL</span>' : ''}
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            <span class="mr-3 font-semibold text-gray-700">Student: ${c.name}</span>
+                                            <span class="mr-3">Room: ${c.room}</span>
+                                            <span class="mr-3">Registered: ${formatDate(c.timestamp)}</span>
+                                        </div>
+                                        <div class="text-xs text-gray-500">${c.desc}</div>
+                                    </div>
+                                    <button onclick="handleResolve(${c.id})" class="px-3 py-1 border rounded text-sm text-indigo-600 hover:bg-indigo-50">Resolve</button>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+
+                    <!-- RESOLVED HISTORY -->
+                    <div class="bg-white shadow rounded-lg mt-6">
+                        <div class="px-4 py-3 border-b bg-green-50">
+                            <h3 class="font-bold text-green-800">Resolved History</h3>
+                        </div>
+                        <ul class="divide-y divide-gray-200 max-h-64 overflow-y-auto">
+                            ${resolved.length === 0 ? '<li class="p-4 text-center text-gray-500">No history available.</li>' : resolved.map(c => `
+                                <li class="p-4 flex justify-between items-center bg-gray-50 opacity-75">
+                                    <div>
+                                        <div class="font-medium text-gray-700 line-through">${c.type}</div>
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            <span class="mr-3 font-semibold">Student: ${c.name}</span>
+                                            <div class="flex flex-col mt-1">
+                                                <span>Registered: ${formatDate(c.timestamp)}</span>
+                                                <span class="text-green-600 font-medium">Resolved: ${formatDate(c.resolvedTimestamp)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">DONE</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                </div>`;
+        };
+
+        const switchStudentTab = (tab) => {
+            const content = document.getElementById('student-content-area');
+            const sorted = sortComplaints(complaints.filter(c => c.status === 'PENDING'));
+            
+            document.getElementById('lodge-tab').className = tab === 'lodge' ? 'px-4 py-2 rounded-lg font-medium bg-indigo-600 text-white' : 'px-4 py-2 rounded-lg font-medium bg-white text-gray-600';
+            document.getElementById('queue-tab').className = tab === 'queue' ? 'px-4 py-2 rounded-lg font-medium bg-indigo-600 text-white' : 'px-4 py-2 rounded-lg font-medium bg-white text-gray-600';
+
+            if (tab === 'lodge') {
+                content.innerHTML = renderStudentForm();
+                attachComplaintFormListener();
+            } else {
+                content.innerHTML = renderQueueStatus(sorted);
+                lucide.createIcons();
+            }
+        };
+
+        const attachAuthListener = (id, handler) => {
+            const form = document.getElementById(`auth-form-${id}`);
+            if (form) form.onsubmit = (e) => { e.preventDefault(); handler(document.getElementById(`password-${id}`).value); };
+        };
+
+        const attachAnnouncementFormListener = () => {
+            const form = document.getElementById('announcement-form');
+            if (form) {
+                form.onsubmit = (e) => {
+                    e.preventDefault();
+                    const input = document.getElementById('announcement-input');
+                    addAnnouncement(input.value);
+                    input.value = '';
+                };
+            }
+        };
+
+        const render = () => {
+            const root = document.getElementById('app-root');
+            if (currentView === 'landing') root.innerHTML = renderLandingPage();
+            else if (currentView === 'student') root.innerHTML = isStudentAuthenticated ? renderStudentDashboard(sortComplaints(complaints)) : renderAuthCard('StudentLogin', 'Student Portal', 'student123', 'indigo');
+            else if (currentView === 'warden') root.innerHTML = isWardenAuthenticated ? renderWardenDashboard(sortComplaints(complaints)) : renderAuthCard('WardenLogin', 'Warden Access', 'admin123', 'red');
+            
+            lucide.createIcons();
+            renderNavControls();
+
+            if (currentView === 'student' && !isStudentAuthenticated) attachAuthListener('StudentLogin', handleStudentLogin);
+            if (currentView === 'student' && isStudentAuthenticated) attachComplaintFormListener();
+            if (currentView === 'warden' && !isWardenAuthenticated) attachAuthListener('WardenLogin', handleWardenLogin);
+            if (currentView === 'warden' && isWardenAuthenticated) attachAnnouncementFormListener();
+        };
+
+        window.onload = render;
+    </script>
+</body>
+</html>
