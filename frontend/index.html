@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -59,11 +60,11 @@
         let isWardenAuthenticated = false;
         let isStudentAuthenticated = false;
         
-        // Sample data 
+        // Sample data (Corrected Priorities for consistency)
         let complaints = [
-            { id: 1, name: "John Doe", room: "101", type: "Furniture", desc: "Broken Chair", priority: 3, status: "PENDING", timestamp: 1700900000000 },
-            { id: 2, name: "Alice Smith", room: "205", type: "Electrical (Danger)", desc: "Exposed wiring sparking", priority: 1, status: "PENDING", timestamp: 1700905000000 },
-            { id: 3, name: "Bob Brown", room: "302", type: "Plumbing", desc: "Leaking tap", priority: 2, status: "PENDING", timestamp: 1700902000000 },
+            { id: 1, name: "John Doe", room: "101", type: "Furniture", desc: "Broken Chair", priority: 3, status: "PENDING", timestamp: 1700900000000, resolvedTimestamp: null },
+            { id: 2, name: "Alice Smith", room: "205", type: "Electrical (Danger)", desc: "Exposed wiring sparking", priority: 1, status: "PENDING", timestamp: 1700905000000, resolvedTimestamp: null },
+            { id: 3, name: "Bob Brown", room: "302", type: "Plumbing (Minor)", desc: "Leaking tap", priority: 2, status: "PENDING", timestamp: 1700902000000, resolvedTimestamp: null },
         ];
         
         let announcements = [
@@ -92,23 +93,27 @@
         // --- CORE SORTING LOGIC (Priority Queue) ---
         const sortComplaints = (list) => {
             return list.slice().sort((a, b) => {
-                // 1. Sort by Priority (1 is highest, so a-b)
+                // 1. Sort by Priority (1 is highest, so a - b)
                 if (a.priority !== b.priority) {
-                    return a.priority - b.priority;
+                    return a.priority - b.priority; 
                 }
                 // 2. Sort by Time (FIFO - Older first)
                 return a.timestamp - b.timestamp;
             });
         };
 
-        // UPDATED PRIORITY LOGIC
+        // --- UPDATED PRIORITY LOGIC ---
         const getPriority = (type) => {
+            // Catch "CRITICAL" from dropdown options immediately
+            if (type.includes('CRITICAL')) return 1;
+            
             if (type.includes('Medical')) return 1; 
-            // Fix: Check for "CRITICAL" to catch the Plumbing/Electrical dropdown options
-            if (type.includes('Danger') || type.includes('Flooding') || type.includes('CRITICAL')) return 1; 
+            if (type.includes('Danger') || type.includes('Flooding')) return 1;
+            
             if (type.includes('Minor')) return 2;
             if (type.includes('Internet') || type.includes('Furniture')) return 3;
-            return 4;
+            
+            return 4; // Default Low
         };
 
         // --- Logic Functions ---
@@ -294,6 +299,8 @@
                         <option>General Maintenance</option>
                         <option>Furniture Repair</option>
                         <option>Internet/Wi-Fi</option>
+                        <!-- ADDED PLUMBING MINOR OPTION HERE -->
+                        <option>Plumbing (Minor)</option> 
                         <option>Electrical (Minor)</option>
                         <option>🔥 Electrical - CRITICAL</option>
                         <option>💧 Plumbing - CRITICAL</option>
