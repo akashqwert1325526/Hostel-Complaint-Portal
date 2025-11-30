@@ -59,6 +59,7 @@
         let isWardenAuthenticated = false;
         let isStudentAuthenticated = false;
         
+        // Sample data 
         let complaints = [
             { id: 1, name: "John Doe", room: "101", type: "Furniture", desc: "Broken Chair", priority: 3, status: "PENDING", timestamp: 1700900000000 },
             { id: 2, name: "Alice Smith", room: "205", type: "Electrical (Danger)", desc: "Exposed wiring sparking", priority: 1, status: "PENDING", timestamp: 1700905000000 },
@@ -80,7 +81,7 @@
 
         const getEstimatedTime = (priority) => {
             switch(priority) {
-                case 1: return "IMMEDIATE"; // Medical/Critical
+                case 1: return "IMMEDIATE"; 
                 case 2: return "24 Hours";
                 case 3: return "2-3 Days";
                 case 4: return "3-5 Days";
@@ -88,16 +89,23 @@
             }
         };
 
+        // --- CORE SORTING LOGIC (Priority Queue) ---
         const sortComplaints = (list) => {
             return list.slice().sort((a, b) => {
-                if (a.priority !== b.priority) return a.priority - b.priority;
+                // 1. Sort by Priority (1 is highest, so a-b)
+                if (a.priority !== b.priority) {
+                    return a.priority - b.priority;
+                }
+                // 2. Sort by Time (FIFO - Older first)
                 return a.timestamp - b.timestamp;
             });
         };
 
+        // UPDATED PRIORITY LOGIC
         const getPriority = (type) => {
-            if (type.includes('Medical')) return 1; // Highest Priority
-            if (type.includes('Danger') || type.includes('Flooding')) return 1;
+            if (type.includes('Medical')) return 1; 
+            // Fix: Check for "CRITICAL" to catch the Plumbing/Electrical dropdown options
+            if (type.includes('Danger') || type.includes('Flooding') || type.includes('CRITICAL')) return 1; 
             if (type.includes('Minor')) return 2;
             if (type.includes('Internet') || type.includes('Furniture')) return 3;
             return 4;
@@ -195,7 +203,7 @@
             if (container) container.querySelector('.auth-error-message').textContent = message;
         };
 
-        // --- Views ---
+        // --- View HTML Generators ---
         const renderNavControls = () => {
             const navEl = document.getElementById('nav-controls');
             let html = `
@@ -289,7 +297,6 @@
                         <option>Electrical (Minor)</option>
                         <option>🔥 Electrical - CRITICAL</option>
                         <option>💧 Plumbing - CRITICAL</option>
-                        <!-- ADDED MEDICAL OPTION HERE -->
                         <option value="Medical">🚑 Medical Emergency - CRITICAL</option>
                     </select>
                     <textarea name="desc" rows="3" placeholder="Description" required class="w-full p-2 border rounded"></textarea>
@@ -301,12 +308,16 @@
             <div class="bg-white shadow sm:rounded-lg overflow-hidden">
                 <div class="px-4 py-5 bg-indigo-50 border-b border-indigo-100 font-medium text-indigo-900">Current Queue</div>
                 <ul class="divide-y divide-gray-200">
-                    ${pending.map((c, i) => `
+                    ${pending.length === 0 ? '<li class="p-8 text-center text-gray-500">No pending complaints.</li>' : pending.map((c, i) => `
                         <li class="px-4 py-4 flex justify-between items-center ${c.priority === 1 ? 'bg-red-50 pulse-critical' : ''}">
                             <div class="flex items-center space-x-3">
                                 <span class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold">${i + 1}</span>
                                 <div>
                                     <p class="text-sm font-medium text-gray-900">${c.type} ${c.priority === 1 ? '<span class="text-red-600 font-bold text-xs">CRITICAL</span>' : ''}</p>
+                                    
+                                    <!-- ADDED STUDENT NAME FOR LIVE QUEUE -->
+                                    <p class="text-xs text-gray-700 font-semibold">Student: ${c.name}</p>
+                                    
                                     <p class="text-xs text-gray-500">Registered: ${formatDate(c.timestamp)}</p>
                                     <p class="text-xs text-indigo-600">Est. Time: ${getEstimatedTime(c.priority)}</p>
                                 </div>
@@ -353,10 +364,10 @@
                     <div class="bg-white shadow rounded-lg">
                         <div class="px-4 py-3 border-b flex justify-between items-center">
                             <h3 class="font-bold text-gray-700">Priority Queue (Pending)</h3>
-                            <div class="text-xs text-gray-500">Live Sort</div>
+                            <div class="text-xs text-gray-500">Live Sort (Critical First)</div>
                         </div>
                         <ul class="divide-y divide-gray-200">
-                            ${pending.length === 0 ? '<li class="p-4 text-center text-gray-500">No pending complaints.</li>' : pending.map(c => `
+                            ${pending.length === 0 ? '<li class="p-4 text-center text-gray-500">No pending complaints.</li>' : pending.map((c, index) => `
                                 <li class="p-4 hover:bg-gray-50 flex justify-between items-center ${c.priority === 1 ? 'bg-red-50 pulse-critical' : ''}">
                                     <div>
                                         <div class="font-medium text-gray-900 flex items-center gap-2">
