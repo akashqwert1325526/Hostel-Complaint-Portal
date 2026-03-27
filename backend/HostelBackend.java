@@ -246,7 +246,8 @@ public class HostelBackend {
     private static void addCorsHeaders(Headers headers) {
         headers.set("Access-Control-Allow-Origin", "*");
         headers.set("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
-        headers.set("Access-Control-Allow-Headers", "Content-Type");
+        headers.set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Request-Private-Network");
+        headers.set("Access-Control-Allow-Private-Network", "true");
         headers.set("Content-Type", "application/json; charset=utf-8");
     }
 
