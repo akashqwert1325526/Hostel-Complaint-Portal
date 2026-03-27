@@ -1,0 +1,4 @@
+Database bootstrap error (create tables): You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'IF NOT EXISTS resolved_at TIMESTAMP NULL DEFAULT NULL' at line 1
+HTTP API started on http://localhost:8080
+Database Error (Update Status): Unknown column 'resolved_at' in 'field list'
+Database Error (Fetch Complaints): Unknown column 'resolved_at' in 'field list'
